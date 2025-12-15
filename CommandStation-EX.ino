@@ -51,6 +51,8 @@
 
 #include "DCCEX.h"
 #include "Display_Implementation.h"
+#include "WebSocketInterface.h"
+
 #ifdef ARDUINO_ARCH_ESP32
 #include "Sniffer.h"
 #include "DCCDecoder.h"
@@ -130,6 +132,8 @@ void setup()
   // Start RMFT aka EX-RAIL (ignored if no automnation)
   RMFT::begin();
 
+WebSocketInterface::setup();
+
 #ifdef ARDUINO_ARCH_ESP32
 #ifdef BOOSTER_INPUT
   dccSniffer = new Sniffer(BOOSTER_INPUT);
@@ -143,6 +147,8 @@ void setup()
     #include "mySetup.h"
     #undef SETUP
   #endif
+
+  
 
   #if defined(LCN_SERIAL)
   LCN_SERIAL.begin(115200);
@@ -187,7 +193,7 @@ void loop()
 #ifndef ARDUINO_ARCH_ESP32
 #if WIFI_ON
   WifiInterface::loop();
- 
+  WebSocketInterface::loop();
 #endif //WIFI_ON
 #else  //ARDUINO_ARCH_ESP32
 #ifndef WIFI_TASK_ON_CORE0
@@ -197,6 +203,8 @@ void loop()
 #if ETHERNET_ON
   EthernetInterface::loop();
 #endif
+  
+  
 
   RMFT::loop();  // ignored if no automation
 

@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>🚂 Train Controller</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    
+    :root {
+      --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --card-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      --btn-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      color: #333;
+    }
+    
+    /* Status Bar */
+    .status-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 15px;
+      z-index: 100;
+      color: white;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #f44336;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-dot.connected { background: #4CAF50; }
+    .status-dot.connecting { background: #FF9800; }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .power-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.2);
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .power-toggle:hover { background: rgba(255,255,255,0.3); }
+    .power-toggle.on { background: rgba(76, 175, 80, 0.8); }
+    
+    /* Screens */
+    .screen {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding-top: 60px;
+      padding-bottom: 80px;
+    }
+    
+    .screen.active { display: flex; }
+    
+    /* Selection Screen */
+    #selectScreen {
+      padding: 70px 15px 90px;
+    }
+    
+    .screen-title {
+      text-align: center;
+      color: white;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .train-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 15px;
+      padding: 10px;
+    }
+    
+    .train-card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--card-shadow);
+      border: 4px solid transparent;
+    }
+    
+    .train-card:hover {
+      transform: translateY(-5px) scale(1.02);
+    }
+    
+    .train-card:active {
+      transform: scale(0.95);
+    }
+    
+    .train-card .emoji {
+      font-size: 50px;
+      display: block;
+      margin-bottom: 10px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+    
+    .train-card .name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .train-card .address {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .add-train-card {
+      background: rgba(255,255,255,0.2);
+      border: 3px dashed rgba(255,255,255,0.5);
+      color: white;
+    }
+    
+    .add-train-card:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    
+    .add-train-card .emoji {
+      opacity: 0.8;
+    }
+    
+    /* Control Screen */
+    #controlScreen {
+      background: var(--bg-gradient);
+    }
+    
+    .back-btn {
+      position: fixed;
+      top: 60px;
+      left: 15px;
+      background: white;
+      border: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: var(--btn-shadow);
+      z-index: 50;
+      transition: transform 0.2s;
+    }
+    
+    .back-btn:active { transform: scale(0.9); }
+    
+    .loco-display {
+      text-align: center;
+      margin: 60px 0 20px;
+    }
+    
+    .loco-display .emoji {
+      font-size: 80px;
+      display: block;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    }
+    
+    .loco-display .name {
+      font-size: 32px;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      margin-top: 10px;
+    }
+    
+    .speed-display {
+      text-align: center;
+      margin: 20px 0;
+    }
+    
+    .speed-number {
+      font-size: 90px;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      line-height: 1;
+      transition: transform 0.1s;
+    }
+    
+    .speed-number.moving {
+      animation: wiggle 0.5s ease-in-out infinite;
+    }
+    
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-1deg); }
+      50% { transform: rotate(1deg); }
+    }
+    
+    .speed-label {
+      font-size: 18px;
+      color: rgba(255,255,255,0.8);
+      font-weight: 500;
+    }
+    
+    .slider-container {
+      padding: 20px 25px;
+    }
+    
+    .speed-slider {
+      width: 100%;
+      height: 60px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 25%, #FFEB3B 50%, #FF9800 75%, #f44336 100%);
+      border-radius: 30px;
+      outline: none;
+      box-shadow: inset 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    .speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 70px;
+      height: 70px;
+      background: white;
+      border-radius: 50%;
+      cursor: grab;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      border: 5px solid #333;
+      transition: transform 0.1s;
+    }
+    
+    .speed-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.1);
+    }
+    
+    .speed-slider::-moz-range-thumb {
+      width: 70px;
+      height: 70px;
+      background: white;
+      border-radius: 50%;
+      cursor: grab;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      border: 5px solid #333;
+    }
+    
+    .direction-row {
+      display: flex;
+      gap: 15px;
+      padding: 0 25px;
+      margin: 15px 0;
+    }
+    
+    .dir-btn {
+      flex: 1;
+      padding: 20px;
+      border: none;
+      border-radius: 20px;
+      font-size: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+      font-family: 'Fredoka', sans-serif;
+    }
+    
+    .dir-btn:active { transform: scale(0.95); }
+    
+    .dir-btn.rev {
+      background: linear-gradient(135deg, #FF6B6B, #ee5a5a);
+      color: white;
+      box-shadow: 0 4px 15px rgba(238, 90, 90, 0.4);
+    }
+    
+    .dir-btn.fwd {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+    
+    .dir-btn.active {
+      transform: scale(1.05);
+      box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+    }
+    
+    .stop-btn {
+      margin: 15px 25px;
+      padding: 25px;
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 28px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 25px rgba(244, 67, 54, 0.5);
+      transition: all 0.2s;
+      font-family: 'Fredoka', sans-serif;
+    }
+    
+    .stop-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .function-row {
+      display: flex;
+      gap: 10px;
+      padding: 0 25px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .func-btn {
+      padding: 15px 25px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 15px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Fredoka', sans-serif;
+    }
+    
+    .func-btn:active { transform: scale(0.95); }
+    
+    .func-btn.active {
+      background: rgba(255, 235, 59, 0.9);
+      color: #333;
+      border-color: #FFC107;
+      box-shadow: 0 0 20px rgba(255, 235, 59, 0.5);
+    }
+    
+    /* Emergency Stop Bar */
+    .emergency-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: linear-gradient(135deg, #b71c1c, #c62828);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+    
+    .emergency-bar:active {
+      background: linear-gradient(135deg, #d32f2f, #e53935);
+    }
+    
+    .emergency-bar span {
+      color: white;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    
+    .modal-overlay.active { display: flex; }
+    
+    .modal {
+      background: white;
+      border-radius: 25px;
+      padding: 30px;
+      width: 100%;
+      max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      font-size: 18px;
+      font-family: 'Fredoka', sans-serif;
+      transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .emoji-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .emoji-option {
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid #eee;
+      border-radius: 12px;
+      font-size: 28px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .emoji-option:hover { border-color: #667eea; }
+    .emoji-option.selected {
+      border-color: #667eea;
+      background: #f0f0ff;
+    }
+    
+    .color-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .color-option {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 4px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .color-option:hover { transform: scale(1.1); }
+    .color-option.selected { border-color: #333; }
+    
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 25px;
+    }
+    
+    .modal-btn {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Fredoka', sans-serif;
+      transition: all 0.2s;
+    }
+    
+    .modal-btn:active { transform: scale(0.95); }
+    .modal-btn.cancel { background: #eee; color: #666; }
+    .modal-btn.save { background: #4CAF50; color: white; }
+    .modal-btn.delete { background: #f44336; color: white; }
+    
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-indicator">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+    <div class="power-toggle" id="powerToggle" onclick="togglePower()">
+      <span>⚡</span>
+      <span id="powerText">OFF</span>
+    </div>
+  </div>
+  
+  <!-- Train Selection Screen -->
+  <div class="screen active" id="selectScreen">
+    <h1 class="screen-title">🚂 Pick Your Train!</h1>
+    <div class="train-grid" id="trainGrid"></div>
+  </div>
+  
+  <!-- Control Screen -->
+  <div class="screen" id="controlScreen">
+    <button class="back-btn" onclick="showSelectScreen()">←</button>
+    
+    <div class="loco-display">
+      <span class="emoji" id="locoEmoji">🚂</span>
+      <div class="name" id="locoName">Thomas</div>
+    </div>
+    
+    <div class="speed-display">
+      <div class="speed-number" id="speedNumber">0</div>
+      <div class="speed-label">SPEED</div>
+    </div>
+    
+    <div class="slider-container">
+      <input type="range" class="speed-slider" id="speedSlider" 
+             min="0" max="126" value="0" 
+             oninput="setSpeed(this.value)">
+    </div>
+    
+    <div class="direction-row">
+      <button class="dir-btn rev" id="btnReverse" onclick="setDirection(0)">
+        ⬅️ REVERSE
+      </button>
+      <button class="dir-btn fwd active" id="btnForward" onclick="setDirection(1)">
+        FORWARD ➡️
+      </button>
+    </div>
+    
+    <button class="stop-btn" onclick="emergencyStop()">
+      🛑 STOP
+    </button>
+    
+    <div class="function-row">
+      <button class="func-btn" id="funcLight" onclick="toggleFunction(0)">
+        💡 Lights
+      </button>
+      <button class="func-btn" id="funcHorn" onclick="toggleFunction(1)">
+        📯 Horn
+      </button>
+      <button class="func-btn" id="funcBell" onclick="toggleFunction(2)">
+        🔔 Bell
+      </button>
+    </div>
+  </div>
+  
+  <!-- Emergency Stop Bar -->
+  <div class="emergency-bar" onclick="emergencyStopAll()">
+    <span>🚨 EMERGENCY STOP ALL 🚨</span>
+  </div>
+  
+  <!-- Add/Edit Train Modal -->
+  <div class="modal-overlay" id="trainModal">
+    <div class="modal">
+      <h2 id="modalTitle">Add New Train</h2>
+      
+      <div class="form-group">
+        <label>Train Name</label>
+        <input type="text" id="trainName" placeholder="e.g., Thomas">
+      </div>
+      
+      <div class="form-group">
+        <label>DCC Address</label>
+        <input type="number" id="trainAddress" placeholder="e.g., 3" min="1" max="9999">
+      </div>
+      
+      <div class="form-group">
+        <label>Choose an Emoji</label>
+        <div class="emoji-picker" id="emojiPicker"></div>
+      </div>
+      
+      <div class="form-group">
+        <label>Card Color</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+      
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+        <button class="modal-btn delete hidden" id="deleteBtn" onclick="deleteTrain()">Delete</button>
+        <button class="modal-btn save" onclick="saveTrain()">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // ============================================
+    // Configuration
+    // ============================================
+    const EMOJIS = ['🚂', '🚃', '🚄', '🚅', '🚆', '🚇', '🚈', '🚉', '🛤️', '🚋', '🚌', '🚎'];
+    const COLORS = ['#4A90D9', '#4CAF50', '#F44336', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', '#795548', '#607D8B', '#3F51B5'];
+    
+    // ============================================
+    // State
+    // ============================================
+    let ws = null;
+    let trains = [];
+    let currentTrain = null;
+    let currentSpeed = 0;
+    let currentDirection = 1;
+    let functions = [false, false, false];
+    let trackPower = false;
+    let editingTrainId = null;
+    let selectedEmoji = '🚂';
+    let selectedColor = '#4A90D9';
+    
+    // ============================================
+    // IndexedDB for train storage
+    // ============================================
+    const DB_NAME = 'TrainControllerDB';
+    const DB_VERSION = 1;
+    let db = null;
+    
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const database = event.target.result;
+          if (!database.objectStoreNames.contains('trains')) {
+            const store = database.createObjectStore('trains', { keyPath: 'id', autoIncrement: true });
+            store.createIndex('address', 'address', { unique: false });
+          }
+        };
+      });
+    }
+    
+    async function loadTrains() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('trains', 'readonly');
+        const store = tx.objectStore('trains');
+        const request = store.getAll();
+        
+        request.onsuccess = () => {
+          trains = request.result;
+          if (trains.length === 0) {
+            // Add default trains
+            trains = [
+              { id: 1, name: 'Thomas', address: 3, emoji: '🚂', color: '#4A90D9' },
+              { id: 2, name: 'Percy', address: 4, emoji: '🚃', color: '#4CAF50' },
+              { id: 3, name: 'James', address: 5, emoji: '🚄', color: '#F44336' }
+            ];
+            trains.forEach(t => saveTrainToDB(t));
+          }
+          resolve(trains);
+        };
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    async function saveTrainToDB(train) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('trains', 'readwrite');
+        const store = tx.objectStore('trains');
+        const request = store.put(train);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    async function deleteTrainFromDB(id) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('trains', 'readwrite');
+        const store = tx.objectStore('trains');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    // ============================================
+    // WebSocket Connection
+    // ============================================
+    function connect() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      
+      updateStatus('connecting', 'Connecting...');
+      
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        updateStatus('connected', 'Connected!');
+        // Request status
+        sendCommand('<s>');
+      };
+      
+      ws.onclose = () => {
+        updateStatus('disconnected', 'Disconnected');
+        setTimeout(connect, 3000);
+      };
+      
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        updateStatus('disconnected', 'Error');
+      };
+      
+      ws.onmessage = (event) => {
+        handleResponse(event.data);
+      };
+    }
+    
+    function sendCommand(cmd) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('TX:', cmd);
+        ws.send(cmd);
+      }
+    }
+    
+    function handleResponse(data) {
+      console.log('RX:', data);
+      
+      // Parse power status
+      if (data.includes('<p1>') || data.includes('<p1 MAIN>')) {
+        trackPower = true;
+        updatePowerUI();
+      } else if (data.includes('<p0>') || data.includes('<p0 MAIN>')) {
+        trackPower = false;
+        updatePowerUI();
+      }
+    }
+    
+    function updateStatus(state, text) {
+      const dot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      
+      dot.className = 'status-dot';
+      if (state === 'connected') dot.classList.add('connected');
+      if (state === 'connecting') dot.classList.add('connecting');
+      
+      statusText.textContent = text;
+    }
+    
+    // ============================================
+    // Train Control
+    // ============================================
+    function selectTrain(train) {
+      currentTrain = train;
+      currentSpeed = 0;
+      currentDirection = 1;
+      functions = [false, false, false];
+      
+      document.getElementById('locoEmoji').textContent = train.emoji;
+      document.getElementById('locoName').textContent = train.name;
+      document.getElementById('speedSlider').value = 0;
+      document.getElementById('speedNumber').textContent = '0';
+      document.getElementById('speedNumber').classList.remove('moving');
+      
+      updateDirectionUI();
+      updateFunctionUI();
+      
+      showControlScreen();
+    }
+    
+    function setSpeed(speed) {
+      currentSpeed = parseInt(speed);
+      document.getElementById('speedNumber').textContent = currentSpeed;
+      
+      const speedNum = document.getElementById('speedNumber');
+      if (currentSpeed > 0) {
+        speedNum.classList.add('moving');
+      } else {
+        speedNum.classList.remove('moving');
+      }
+      
+      if (currentTrain) {
+        // DCC-EX throttle command: <t REGISTER CAB SPEED DIRECTION>
+        sendCommand(`<t 1 ${currentTrain.address} ${currentSpeed} ${currentDirection}>`);
+      }
+    }
+    
+    function setDirection(dir) {
+      currentDirection = dir;
+      updateDirectionUI();
+      
+      if (currentTrain) {
+        sendCommand(`<t 1 ${currentTrain.address} ${currentSpeed} ${currentDirection}>`);
+      }
+    }
+    
+    function updateDirectionUI() {
+      document.getElementById('btnForward').classList.toggle('active', currentDirection === 1);
+      document.getElementById('btnReverse').classList.toggle('active', currentDirection === 0);
+    }
+    
+    function toggleFunction(funcNum) {
+      functions[funcNum] = !functions[funcNum];
+      updateFunctionUI();
+      
+      if (currentTrain) {
+        // DCC-EX function command: <F CAB FUNC STATE>
+        sendCommand(`<F ${currentTrain.address} ${funcNum} ${functions[funcNum] ? 1 : 0}>`);
+      }
+    }
+    
+    function updateFunctionUI() {
+      document.getElementById('funcLight').classList.toggle('active', functions[0]);
+      document.getElementById('funcHorn').classList.toggle('active', functions[1]);
+      document.getElementById('funcBell').classList.toggle('active', functions[2]);
+    }
+    
+    function emergencyStop() {
+      currentSpeed = 0;
+      document.getElementById('speedSlider').value = 0;
+      document.getElementById('speedNumber').textContent = '0';
+      document.getElementById('speedNumber').classList.remove('moving');
+      
+      if (currentTrain) {
+        // Speed -1 is emergency stop in DCC-EX
+        sendCommand(`<t 1 ${currentTrain.address} -1 ${currentDirection}>`);
+      }
+    }
+    
+    function emergencyStopAll() {
+      currentSpeed = 0;
+      document.getElementById('speedSlider').value = 0;
+      document.getElementById('speedNumber').textContent = '0';
+      document.getElementById('speedNumber').classList.remove('moving');
+      
+      // DCC-EX emergency stop all command
+      sendCommand('<0>');
+      trackPower = false;
+      updatePowerUI();
+    }
+    
+    function togglePower() {
+      trackPower = !trackPower;
+      sendCommand(trackPower ? '<1>' : '<0>');
+      updatePowerUI();
+    }
+    
+    function updatePowerUI() {
+      const toggle = document.getElementById('powerToggle');
+      const text = document.getElementById('powerText');
+      toggle.classList.toggle('on', trackPower);
+      text.textContent = trackPower ? 'ON' : 'OFF';
+    }
+    
+    // ============================================
+    // UI Navigation
+    // ============================================
+    function showSelectScreen() {
+      document.getElementById('selectScreen').classList.add('active');
+      document.getElementById('controlScreen').classList.remove('active');
+    }
+    
+    function showControlScreen() {
+      document.getElementById('selectScreen').classList.remove('active');
+      document.getElementById('controlScreen').classList.add('active');
+    }
+    
+    function renderTrainGrid() {
+      const grid = document.getElementById('trainGrid');
+      grid.innerHTML = '';
+      
+      trains.forEach(train => {
+        const card = document.createElement('div');
+        card.className = 'train-card';
+        card.style.borderColor = train.color;
+        card.innerHTML = `
+          <span class="emoji">${train.emoji}</span>
+          <div class="name">${train.name}</div>
+          <div class="address">DCC #${train.address}</div>
+        `;
+        card.onclick = () => selectTrain(train);
+        card.oncontextmenu = (e) => {
+          e.preventDefault();
+          openEditModal(train);
+        };
+        grid.appendChild(card);
+      });
+      
+      // Add "Add Train" card
+      const addCard = document.createElement('div');
+      addCard.className = 'train-card add-train-card';
+      addCard.innerHTML = `
+        <span class="emoji">➕</span>
+        <div class="name">Add Train</div>
+      `;
+      addCard.onclick = openAddModal;
+      grid.appendChild(addCard);
+    }
+    
+    // ============================================
+    // Modal Handling
+    // ============================================
+    function openAddModal() {
+      editingTrainId = null;
+      document.getElementById('modalTitle').textContent = 'Add New Train';
+      document.getElementById('trainName').value = '';
+      document.getElementById('trainAddress').value = '';
+      document.getElementById('deleteBtn').classList.add('hidden');
+      
+      selectedEmoji = '🚂';
+      selectedColor = '#4A90D9';
+      renderEmojiPicker();
+      renderColorPicker();
+      
+      document.getElementById('trainModal').classList.add('active');
+    }
+    
+    function openEditModal(train) {
+      editingTrainId = train.id;
+      document.getElementById('modalTitle').textContent = 'Edit Train';
+      document.getElementById('trainName').value = train.name;
+      document.getElementById('trainAddress').value = train.address;
+      document.getElementById('deleteBtn').classList.remove('hidden');
+      
+      selectedEmoji = train.emoji;
+      selectedColor = train.color;
+      renderEmojiPicker();
+      renderColorPicker();
+      
+      document.getElementById('trainModal').classList.add('active');
+    }
+    
+    function closeModal() {
+      document.getElementById('trainModal').classList.remove('active');
+    }
+    
+    function renderEmojiPicker() {
+      const picker = document.getElementById('emojiPicker');
+      picker.innerHTML = '';
+      
+      EMOJIS.forEach(emoji => {
+        const opt = document.createElement('div');
+        opt.className = 'emoji-option' + (emoji === selectedEmoji ? ' selected' : '');
+        opt.textContent = emoji;
+        opt.onclick = () => {
+          selectedEmoji = emoji;
+          renderEmojiPicker();
+        };
+        picker.appendChild(opt);
+      });
+    }
+    
+    function renderColorPicker() {
+      const picker = document.getElementById('colorPicker');
+      picker.innerHTML = '';
+      
+      COLORS.forEach(color => {
+        const opt = document.createElement('div');
+        opt.className = 'color-option' + (color === selectedColor ? ' selected' : '');
+        opt.style.background = color;
+        opt.onclick = () => {
+          selectedColor = color;
+          renderColorPicker();
+        };
+        picker.appendChild(opt);
+      });
+    }
+    
+    async function saveTrain() {
+      const name = document.getElementById('trainName').value.trim();
+      const address = parseInt(document.getElementById('trainAddress').value);
+      
+      if (!name || !address) {
+        alert('Please fill in all fields');
+        return;
+      }
+      
+      const train = {
+        name,
+        address,
+        emoji: selectedEmoji,
+        color: selectedColor
+      };
+      
+      if (editingTrainId) {
+        train.id = editingTrainId;
+        const idx = trains.findIndex(t => t.id === editingTrainId);
+        if (idx >= 0) trains[idx] = train;
+      } else {
+        train.id = Date.now();
+        trains.push(train);
+      }
+      
+      await saveTrainToDB(train);
+      renderTrainGrid();
+      closeModal();
+    }
+    
+    async function deleteTrain() {
+      if (!editingTrainId) return;
+      
+      if (confirm('Delete this train?')) {
+        await deleteTrainFromDB(editingTrainId);
+        trains = trains.filter(t => t.id !== editingTrainId);
+        renderTrainGrid();
+        closeModal();
+      }
+    }
+    
+    // ============================================
+    // Initialize
+    // ============================================
+    async function init() {
+      await initDB();
+      await loadTrains();
+      renderTrainGrid();
+      connect();
+    }
+    
+    init();
+  </script>
+</body>
+</html>
